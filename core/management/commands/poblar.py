@@ -15,11 +15,26 @@ from django.utils import timezone
 from collections import defaultdict
 import re
 
+# una funcion para ayudara poblar inscripciones
+def obtener_nivel_por_edad(edad):
+    edad_a_grupo = {
+        (11, 12): "Primero",
+        (13, 14): "Segundo",
+        (14, 15): "Tercero",
+        (15, 16): "Cuarto",
+        (16, 17): "Quinto",
+        (17, 18): "Sexto",
+    }
+    for rango, grupo in edad_a_grupo.items():
+        if edad in rango:
+            return grupo
+    return None
+
 class Command(BaseCommand):
     help = 'Pobla la base de datos con datos de prueba'
 
     def handle(self, *args, **kwargs):
-        fake = Faker()
+        fake = Faker('es_CO')
         
         #Creando administradores
         self.stdout.write("Creando administradores...")
@@ -56,15 +71,15 @@ class Command(BaseCommand):
             "Lengua castellana y originaria",
             "Lengua extranjera",
             "Ciencias sociales",
-            "Educación física y deportes",
-            "Educación musical",
-            "Artes plásticas y visuales",
-            "Matemática",
-            "Contaduría general",
-            "Biología - Geografía",
-            "Física",
-            "Química",
-            "Cosmovisiones, Filosofía y Psicología",
+            "Educacion física y deportes",
+            "Educacion musical",
+            "Artes plasticas y visuales",
+            "Matematica",
+            "Contaduria general",
+            "Biologia - Geografia",
+            "Fisica",
+            "Quimica",
+            "Cosmovisiones, Filosofia y Psicologia",
             "Valores, Espiritualidad y Religiones"
         ]
 
@@ -86,7 +101,7 @@ class Command(BaseCommand):
                         rol='PROFESOR',
                         is_active=True
                     )
-                    user.set_password('12345678')
+                    user.set_password('profesor12345')
                     user.save()
 
                     profesor = Profesor.objects.create(
@@ -101,7 +116,7 @@ class Command(BaseCommand):
                     self.stdout.write(f"Usuario {username} ya existe, omitiendo.")
 
         # Creando alumnos
-        self.stdout.write("Creando alumnos por edad...")
+        """self.stdout.write("Creando alumnos por edad...")
 
         alumnos = []
         contador_global = 1
@@ -126,7 +141,7 @@ class Command(BaseCommand):
                         rol='ALUMNO',
                         is_active=True
                     )
-                    user.set_password('12345678')
+                    user.set_password('alumno12345')
                     user.save()
 
                     alumno = Alumno.objects.create(
@@ -141,7 +156,70 @@ class Command(BaseCommand):
                 else:
                     self.stdout.write(f"Usuario {username} ya existe, omitiendo.")
                 
+                contador_global += 1"""
+        
+        ### Creando alumnos con edades exactas de 12 a 18 años...
+        self.stdout.write("Creando alumnos con edades exactas de 12 a 18 años...")
+
+        alumnos = []
+        contador_global = 1
+        hoy = date.today()
+        anio_actual = hoy.year
+        fecha_referencia = date(anio_actual, 3, 1)  # Fecha para calcular edad exacta
+
+        for edad in range(12, 19):  # 12 a 18 inclusive
+            cantidad_deseada = 60
+            creados = 0
+            self.stdout.write(f"Edad {edad}: creando {cantidad_deseada} alumnos...")
+
+            while creados < cantidad_deseada:
+                username = f'alumno{contador_global}'
+
+                if Usuario.objects.filter(username=username).exists():
+                    contador_global += 1
+                    continue
+
+                # Fecha de nacimiento para que cumpla 'edad' años al 1 de marzo
+                nacimiento_base = fecha_referencia.replace(year=fecha_referencia.year - edad)
+                nacimiento = nacimiento_base + timedelta(days=random.randint(0, 364))
+
+                user = Usuario(
+                    username=username,
+                    email=f'{username}@test.com',
+                    first_name=fake.first_name(),
+                    last_name=fake.last_name(),
+                    rol='ALUMNO',
+                    is_active=True
+                )
+                user.set_password('alumno12345')
+                user.save()
+
+                Alumno.objects.create(
+                    usuario=user,
+                    fecha_nacimiento=nacimiento,
+                    genero=random.choice(['M', 'F']),
+                    direccion=fake.address(),
+                    telefono_emergencia=f"+591 {random.randint(60000000, 79999999)}"
+                )
+
+                alumnos.append(user)
+                self.stdout.write(f"{username} creado (nacido el {nacimiento})")
                 contador_global += 1
+                creados += 1
+
+        # Verificación final: resumen por edad real
+        self.stdout.write("\n Resumen final de alumnos por edad actual:")
+
+        resumen = defaultdict(int)
+        for alumno in Alumno.objects.all():
+            nacimiento = alumno.fecha_nacimiento
+            edad = hoy.year - nacimiento.year
+            if nacimiento > hoy.replace(year=hoy.year - edad):
+                edad -= 1
+            resumen[edad] += 1
+
+        for edad in sorted(resumen):
+            self.stdout.write(f" - Edad {edad}: {resumen[edad]} alumnos")
 
         # apoderados por alumno
         self.stdout.write("Creando apoderados por alumno...")
@@ -165,7 +243,7 @@ class Command(BaseCommand):
                     rol='APODERADO',
                     is_active=True
                 )
-                user.set_password('12345678')
+                user.set_password('apoderado12345')
                 user.save()
 
                 apoderado = Apoderado.objects.create(
@@ -193,10 +271,10 @@ class Command(BaseCommand):
         # Creando gestiones
         self.stdout.write("Creando gestiones académicas...")
 
-        estados = ['FINALIZADO', 'FINALIZADO', 'FINALIZADO', 'FINALIZADO', 'FINALIZADO', 'EN CURSO']  # Puedes ajustar según tu lógica
+        estados = ['FINALIZADO', 'FINALIZADO', 'EN CURSO']  # Puedes ajustar según tu lógica
 
         gestiones = []
-        for i, anio in enumerate(range(2020, 2026)):
+        for i, anio in enumerate(range(2023, 2026)):
             nombre = f"Gestión {anio}"
             fecha_inicio = date(anio, 2, 10)
             fecha_fin = date(anio, 11, 28)
@@ -473,8 +551,9 @@ class Command(BaseCommand):
             if horarios_creados < 3:
                 self.stdout.write(f"Solo se pudieron asignar {horarios_creados}/3 horarios para {ggm.materia.nombre}")
 
-        # Poblando inscripciones para la gestión 2025
-        self.stdout.write("Poblando inscripciones para la gestión 2025...")
+        # -------- Poblando inscripciones para la gestión 2025 -------- #
+        # -------- Poblando inscripciones para la gestión 2025 -------- #
+        """self.stdout.write("Poblando inscripciones para la gestión 2025...")
 
         ##gestion_2025 = Gestion.objects.filter(anio=2025).first()
         gestion_2025 = Gestion.objects.filter(fecha_inicio__year=2025).first()
@@ -570,9 +649,394 @@ class Command(BaseCommand):
 
         for gg in gestion_grados.order_by('grado__nombre'):
             cantidad = Inscripcion.objects.filter(gestiongrado=gg).count()
+            self.stdout.write(f" - {gg.grado.nombre}: {cantidad} inscritos")"""
+        # FIN ----------- Poblando inscripciones para la gestión 2025 -------------#
+        # FIN ----------- Poblando inscripciones para la gestión 2025 -------------#
+
+        """# -------- Poblando inscripciones para la gestión 2025 -------- #
+        self.stdout.write("Poblando inscripciones para la gestión 2025...")
+
+        gestion_2025 = Gestion.objects.filter(fecha_inicio__year=2025).first()
+
+        if not gestion_2025:
+            self.stdout.write("Gestión 2025 no encontrada. Abortando inscripción.")
+            return
+
+        # Obtener grados de la gestión 2025
+        gestion_grados = GestionGrado.objects.filter(gestion=gestion_2025).select_related('grado')
+
+        # Agrupar GestionGrado por nivel ("Primero", "Segundo", etc.)
+        grupos_grado = defaultdict(list)
+        for gg in gestion_grados:
+            match = re.match(r"(\w+)", gg.grado.nombre.strip())
+            if match:
+                clave = match.group(1)
+                grupos_grado[clave].append(gg)
+
+        # Mapeo edad → grupo
+        edad_a_grupo = {
+            12: "Primero",
+            13: "Segundo",
+            14: "Tercero",
+            15: "Cuarto",
+            16: "Quinto",
+            17: "Sexto",
+            18: "Sexto",
+        }
+
+        # Alumnos disponibles
+        alumnos_disponibles = list(Alumno.objects.all())
+        random.shuffle(alumnos_disponibles)
+
+        # Fase 1: Asegurar mínimo 30 alumnos por cada grado
+        inscripciones_creadas = 0
+        for gg in gestion_grados:
+            inscritos_actuales = Inscripcion.objects.filter(gestiongrado=gg).count()
+            necesarios = max(0, 30 - inscritos_actuales)
+            grado_nombre = gg.grado.nombre
+
+            self.stdout.write(f"{grado_nombre}: {inscritos_actuales} inscritos, necesitan {necesarios} más.")
+
+            while necesarios > 0 and alumnos_disponibles:
+                alumno = alumnos_disponibles.pop()
+
+                edad = date.today().year - alumno.fecha_nacimiento.year
+                if alumno.fecha_nacimiento > date.today().replace(year=date.today().year - edad):
+                    edad -= 1
+
+                grupo = edad_a_grupo.get(edad)
+                if not grupo or not grado_nombre.startswith(grupo):
+                    continue
+
+                # Evitar duplicados en la gestión
+                if Inscripcion.objects.filter(alumno=alumno, gestiongrado__gestion=gestion_2025).exists():
+                    continue
+
+                Inscripcion.objects.create(
+                    alumno=alumno,
+                    gestiongrado=gg,
+                    estado='ACTIVA'
+                )
+                inscripciones_creadas += 1
+                necesarios -= 1
+                self.stdout.write(f"  - {alumno.usuario.username} inscrito en {grado_nombre}")
+
+        # Fase 2: Inscribir el resto de alumnos en grados válidos
+        for alumno in alumnos_disponibles:
+            edad = date.today().year - alumno.fecha_nacimiento.year
+            if alumno.fecha_nacimiento > date.today().replace(year=date.today().year - edad):
+                edad -= 1
+
+            grupo = edad_a_grupo.get(edad)
+            if not grupo:
+                continue
+
+            posibles_gg = grupos_grado.get(grupo)
+            if not posibles_gg:
+                continue
+
+            if Inscripcion.objects.filter(alumno=alumno, gestiongrado__gestion=gestion_2025).exists():
+                continue
+
+            gestion_grado = random.choice(posibles_gg)
+            Inscripcion.objects.create(
+                alumno=alumno,
+                gestiongrado=gestion_grado,
+                estado='ACTIVA'
+            )
+            inscripciones_creadas += 1
+            self.stdout.write(f"{alumno.usuario.username} inscrito en {gestion_grado.grado.nombre} (extra)")
+
+        # Resumen
+        self.stdout.write(f"\nTotal inscripciones creadas: {inscripciones_creadas}")
+        self.stdout.write("\nResumen final de inscripciones por grado (Gestión 2025):")
+
+        for gg in gestion_grados.order_by('grado__nombre'):
+            cantidad = Inscripcion.objects.filter(gestiongrado=gg).count()
             self.stdout.write(f" - {gg.grado.nombre}: {cantidad} inscritos")
 
-        # Generando Notas
+        self.stdout.write("\nResumen de inscripciones por nivel (agrupado):")
+
+        resumen_nivel = defaultdict(int)
+        for gg in gestion_grados:
+            match = re.match(r"(\w+)", gg.grado.nombre.strip())
+            if match:
+                nivel = match.group(1)
+                cantidad = Inscripcion.objects.filter(gestiongrado=gg).count()
+                resumen_nivel[nivel] += cantidad
+
+        for nivel, total in sorted(resumen_nivel.items()):
+            self.stdout.write(f" - {nivel}: {total} inscritos en total")"""
+
+        # -------- Poblando inscripciones para la gestión 2025 -------- #
+        """self.stdout.write("Poblando inscripciones para la gestión 2025...")
+
+        gestion_2025 = Gestion.objects.filter(fecha_inicio__year=2025).first()
+
+        if not gestion_2025:
+            self.stdout.write("Gestión 2025 no encontrada. Abortando inscripción.")
+            return
+
+        # Obtener grados de la gestión 2025
+        gestion_grados = GestionGrado.objects.filter(gestion=gestion_2025).select_related('grado')
+
+        # Mapeo edad → grupo
+        edad_a_grupo = {
+            12: "Primero",
+            13: "Segundo",
+            14: "Tercero",
+            15: "Cuarto",
+            16: "Quinto",
+            17: "Sexto",
+            18: "Sexto",
+        }
+
+        # Mapeo de nombres de grados a niveles
+        grado_a_nivel = {
+            "Primero - A": "Primero",
+            "Primero - B": "Primero",
+            "Segundo - A": "Segundo",
+            "Segundo - B": "Segundo",
+            "Tercero - A": "Tercero",
+            "Tercero - B": "Tercero",
+            "Cuarto - A": "Cuarto",
+            "Cuarto - B": "Cuarto",
+            "Quinto - A": "Quinto",
+            "Quinto - B": "Quinto",
+            "Sexto - A": "Sexto",
+            "Sexto - B": "Sexto",
+        }
+
+        # Alumnos disponibles
+        alumnos_disponibles = list(Alumno.objects.all())
+        random.shuffle(alumnos_disponibles)
+
+        # Fase 1: Asegurar mínimo 30 alumnos por cada grado
+        inscripciones_creadas = 0
+        for gg in gestion_grados:
+            grado_nombre = gg.grado.nombre
+            nivel = grado_a_nivel.get(grado_nombre)
+
+            if not nivel:
+                continue  # Si el grado no está en el mapeo, lo omitimos
+
+            inscritos_actuales = Inscripcion.objects.filter(gestiongrado=gg).count()
+            necesarios = max(0, 28 - inscritos_actuales)
+
+            self.stdout.write(f"{grado_nombre}: {inscritos_actuales} inscritos, necesitan {necesarios} más.")
+
+            while necesarios > 0 and alumnos_disponibles:
+                alumno = alumnos_disponibles.pop()
+
+                edad = date.today().year - alumno.fecha_nacimiento.year
+                if alumno.fecha_nacimiento > date.today().replace(year=date.today().year - edad):
+                    edad -= 1
+
+                grupo = edad_a_grupo.get(edad)
+                if grupo != nivel:
+                    continue  # No corresponde a este grado
+
+                # Evitar duplicados en la gestión
+                if Inscripcion.objects.filter(alumno=alumno, gestiongrado__gestion=gestion_2025).exists():
+                    continue
+
+                Inscripcion.objects.create(
+                    alumno=alumno,
+                    gestiongrado=gg,
+                    estado='ACTIVA'
+                )
+                inscripciones_creadas += 1
+                necesarios -= 1
+                self.stdout.write(f"  - {alumno.usuario.username} inscrito en {grado_nombre}")
+
+        # Resumen
+        self.stdout.write(f"\nTotal inscripciones creadas: {inscripciones_creadas}")
+        self.stdout.write("\nResumen final de inscripciones por grado (Gestión 2025):")
+
+        for gg in gestion_grados.order_by('grado__nombre'):
+            cantidad = Inscripcion.objects.filter(gestiongrado=gg).count()
+            self.stdout.write(f" - {gg.grado.nombre}: {cantidad} inscritos")"""
+
+        # -------- Poblando inscripciones para la gestión 2025 -------- #
+
+        # Mapeo edad → nivel
+        """edad_a_grupo = {
+            12: "Primero",
+            13: "Segundo",
+            14: "Tercero",
+            15: "Cuarto",
+            16: "Quinto",
+            17: "Sexto",
+            18: "Sexto",
+        }
+
+        self.stdout.write("Poblando inscripciones para la gestión 2025...")
+
+        gestion_2025 = Gestion.objects.filter(fecha_inicio__year=2025).first()
+        if not gestion_2025:
+            self.stdout.write("Gestión 2025 no encontrada. Abortando inscripción.")
+            return
+
+        gestion_grados = GestionGrado.objects.filter(gestion=gestion_2025).select_related('grado')
+
+        # Agrupar GestionGrado por nivel
+        grupos_grado = defaultdict(list)
+        for gg in gestion_grados:
+            match = re.match(r"(\w+)", gg.grado.nombre.strip())  # Extrae "Primero" de "Primero - A"
+            if match:
+                clave = match.group(1)
+                grupos_grado[clave].append(gg)
+
+        # Shuffle para distribución aleatoria
+        alumnos_disponibles = list(Alumno.objects.all())
+        random.shuffle(alumnos_disponibles)
+
+        inscripciones_creadas = 0
+
+        # Fase 1: Llenar cada grupo hasta tener al menos 28 alumnos
+        for nivel, grados in grupos_grado.items():
+            for gg in grados:
+                inscritos_actuales = Inscripcion.objects.filter(gestiongrado=gg).count()
+                necesarios = max(0, 25 - inscritos_actuales)
+                self.stdout.write(f"{gg.grado.nombre}: {inscritos_actuales} inscritos, necesitan {necesarios} más.")
+
+                while necesarios > 0 and alumnos_disponibles:
+                    alumno = alumnos_disponibles.pop()
+
+                    edad = date.today().year - alumno.fecha_nacimiento.year
+                    if alumno.fecha_nacimiento > date.today().replace(year=date.today().year - edad):
+                        edad -= 1
+
+                    grupo_esperado = edad_a_grupo.get(edad)
+                    if grupo_esperado != nivel:
+                        continue
+
+                    if Inscripcion.objects.filter(alumno=alumno, gestiongrado__gestion=gestion_2025).exists():
+                        continue
+
+                    Inscripcion.objects.create(
+                        alumno=alumno,
+                        gestiongrado=gg,
+                        estado='ACTIVA'
+                    )
+                    inscripciones_creadas += 1
+                    necesarios -= 1
+                    self.stdout.write(f"  - {alumno.usuario.username} inscrito en {gg.grado.nombre}")
+
+        # Fase 2: Inscribir el resto de alumnos aleatoriamente donde les corresponde por edad
+        for alumno in alumnos_disponibles:
+            edad = date.today().year - alumno.fecha_nacimiento.year
+            if alumno.fecha_nacimiento > date.today().replace(year=date.today().year - edad):
+                edad -= 1
+
+            grupo = edad_a_grupo.get(edad)
+            if not grupo:
+                continue
+
+            posibles_gg = grupos_grado.get(grupo)
+            if not posibles_gg:
+                continue
+
+            if Inscripcion.objects.filter(alumno=alumno, gestiongrado__gestion=gestion_2025).exists():
+                continue
+
+            gestion_grado = random.choice(posibles_gg)
+            Inscripcion.objects.create(
+                alumno=alumno,
+                gestiongrado=gestion_grado,
+                estado='ACTIVA'
+            )
+            inscripciones_creadas += 1
+            self.stdout.write(f"{alumno.usuario.username} inscrito en {gestion_grado.grado.nombre} (extra)")
+
+        self.stdout.write(f"\nTotal inscripciones creadas: {inscripciones_creadas}")"""
+
+        # -------- Poblando inscripciones para la gestión 2025 -------- #
+
+        self.stdout.write("Poblando inscripciones para la gestión 2025...")
+
+        hoy = date.today()
+        gestion_2025 = Gestion.objects.filter(fecha_inicio__year=2025).first()
+        if not gestion_2025:
+            self.stdout.write("Gestión 2025 no encontrada. Abortando inscripción.")
+            return
+
+        gestion_grados = GestionGrado.objects.filter(gestion=gestion_2025).select_related('grado')
+
+        # Agrupar GestionGrado por nivel
+        grupos_grado = defaultdict(list)
+        for gg in gestion_grados:
+            match = re.match(r"(\w+)", gg.grado.nombre.strip())  # Extrae "Primero" de "Primero - A"
+            if match:
+                clave = match.group(1)
+                grupos_grado[clave].append(gg)
+
+        alumnos_disponibles = list(Alumno.objects.all())
+        random.shuffle(alumnos_disponibles)
+
+        inscripciones_creadas = 0
+
+        # Fase 1: Llenar cada grupo hasta tener al menos 25 alumnos
+        for nivel, grados in grupos_grado.items():
+            for gg in grados:
+                inscritos_actuales = Inscripcion.objects.filter(gestiongrado=gg).count()
+                necesarios = max(0, 25 - inscritos_actuales)
+                self.stdout.write(f"{gg.grado.nombre}: {inscritos_actuales} inscritos, necesitan {necesarios} más.")
+
+                while necesarios > 0 and alumnos_disponibles:
+                    alumno = alumnos_disponibles.pop()
+
+                    edad = hoy.year - alumno.fecha_nacimiento.year
+                    if alumno.fecha_nacimiento > hoy.replace(year=hoy.year - edad):
+                        edad -= 1
+
+                    grupo_esperado = obtener_nivel_por_edad(edad)
+                    if grupo_esperado != nivel:
+                        continue
+
+                    if Inscripcion.objects.filter(alumno=alumno, gestiongrado__gestion=gestion_2025).exists():
+                        continue
+
+                    Inscripcion.objects.create(
+                        alumno=alumno,
+                        gestiongrado=gg,
+                        estado='ACTIVA'
+                    )
+                    inscripciones_creadas += 1
+                    necesarios -= 1
+                    self.stdout.write(f"  - {alumno.usuario.username} inscrito en {gg.grado.nombre}")
+
+        # Fase 2: Inscribir el resto de alumnos aleatoriamente donde les corresponde por edad
+        for alumno in alumnos_disponibles:
+            edad = hoy.year - alumno.fecha_nacimiento.year
+            if alumno.fecha_nacimiento > hoy.replace(year=hoy.year - edad):
+                edad -= 1
+
+            grupo = obtener_nivel_por_edad(edad)
+            if not grupo:
+                continue
+
+            posibles_gg = grupos_grado.get(grupo)
+            if not posibles_gg:
+                continue
+
+            if Inscripcion.objects.filter(alumno=alumno, gestiongrado__gestion=gestion_2025).exists():
+                continue
+
+            gestion_grado = random.choice(posibles_gg)
+            Inscripcion.objects.create(
+                alumno=alumno,
+                gestiongrado=gestion_grado,
+                estado='ACTIVA'
+            )
+            inscripciones_creadas += 1
+            self.stdout.write(f"{alumno.usuario.username} inscrito en {gestion_grado.grado.nombre} (extra)")
+
+        self.stdout.write(f"\nTotal inscripciones creadas: {inscripciones_creadas}")
+
+        # ----------- Generando Notas -------------#
+        # ----------- Generando Notas -------------#
+
         self.stdout.write("Generando notas para el 1er Trimestre de la gestión 2025...")
 
         # Obtener gestión 2025 y su 1er Trimestre
@@ -609,11 +1073,12 @@ class Command(BaseCommand):
         self.stdout.write(f"Notas generadas para el 1er Trimestre: {total_notas}")
 
         # Generando Asistencia
+        # Generando Asistencia
         self.stdout.write("Generando asistencias para el 1er Trimestre de la gestión 2025...")
 
         # Definimos el rango de fechas (1er trimestre aproximado)
         fecha_inicio = date(2025, 2, 1)
-        fecha_fin = date(2025, 4, 30)
+        fecha_fin = date(2025, 6, 2)
 
         # Generamos todas las fechas hábiles (lunes a viernes)
         fechas_habiles = []
@@ -653,6 +1118,7 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Total de registros de asistencia generados: {total_registros}")
 
+        # Generando participacion
         # Generando participacion
         self.stdout.write("Generando participaciones para el 1er Trimestre de la gestión 2025...")
 
@@ -704,6 +1170,7 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Participaciones generadas: {total}")
 
+        #Prediccion Rendimiento
         #Prediccion Rendimiento
         # Obtener todas las inscripciones de la gestión 2025
         gestion_2025 = Gestion.objects.get(fecha_inicio__year=2025)

@@ -87,7 +87,7 @@ DATABASES = {
         #'NAME': BASE_DIR / 'db.sqlite3',
         'ENGINE': 'django.db.backends.postgresql',
         #'NAME': 'aulainteligente_db',
-        'NAME': 'aulaia_db',
+        'NAME': 'aula_ia_db',
         'USER': 'postgres',
         'PASSWORD': '12345',
         'HOST': 'localhost',

@@ -31,6 +31,77 @@ class UsuarioSerializer(serializers.ModelSerializer):
             instance.set_password(password)
         instance.save()
         return instance
+    
+def obtener_categoria(valor):
+        if valor >= 8.5:
+            return 'ALTO'
+        elif valor >= 6.5:
+            return 'MEDIO'
+        elif valor >= 4.0:
+            return 'BAJO'
+        else:
+            return 'DEFICIENTE'
+
+class DashboardAlumnoSerializer(serializers.ModelSerializer):
+    alumno_nombre = serializers.SerializerMethodField()
+    notas = serializers.SerializerMethodField()
+    asistencias = serializers.SerializerMethodField()
+    participaciones = serializers.SerializerMethodField()
+    predicciones = serializers.SerializerMethodField()
+    comparacion_real_predicho = serializers.SerializerMethodField()
+    
+
+    class Meta:
+        model = Inscripcion
+        fields = [
+            'alumno_nombre', 'notas', 'asistencias', 'participaciones',
+            'predicciones', 'comparacion_real_predicho'
+        ]
+
+    def get_alumno_nombre(self, obj):
+        return obj.alumno.usuario.get_full_name()
+
+    def get_notas(self, obj):
+        notas = obj.nota_set.all()
+        return NotaSerializer(notas, many=True).data
+
+    def get_asistencias(self, obj):
+        asistencias = obj.asistencia_set.all()
+        return AsistenciaSerializer(asistencias, many=True).data
+
+    def get_participaciones(self, obj):
+        participaciones = obj.participacion_set.all()
+        return ParticipacionSerializer(participaciones, many=True).data
+
+    def get_predicciones(self, obj):
+        predicciones = obj.prediccionrendimiento_set.all()
+        return PrediccionRendimientoSerializer(predicciones, many=True).data
+
+    
+
+    def get_comparacion_real_predicho(self, obj):
+        # Obtener notas y calcular promedio real
+        notas = obj.nota_set.all()
+        promedio_real = sum(n.valor for n in notas) / notas.count() if notas.exists() else None
+
+        # Obtener la última predicción
+        prediccion = obj.prediccionrendimiento_set.order_by('-fecha_prediccion').first()
+        valor_predicho = prediccion.valor_prediccion if prediccion else None
+
+        # Categorías
+        categoria_real = obtener_categoria(promedio_real) if promedio_real is not None else None
+        categoria_predicha = obtener_categoria(valor_predicho) if valor_predicho is not None else None
+
+        # Diferencia numérica
+        diferencia = round(promedio_real - valor_predicho, 2) if promedio_real is not None and valor_predicho is not None else None
+
+        return {
+            "promedio_real": promedio_real,
+            "valor_predicho": valor_predicho,
+            "diferencia": diferencia,
+            "categoria_real": categoria_real,
+            "categoria_predicha": categoria_predicha
+        }
 
 class RegistroUsuarioSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -142,9 +213,13 @@ class ApoderadoSerializer(serializers.ModelSerializer):
 
 # Horario
 class HorarioSerializer(serializers.ModelSerializer):
+    materia = serializers.CharField(source='gestiongradomateria.materia.nombre', read_only=True)
+    aula = serializers.CharField(source='aula.codigo', read_only=True)
+    profesor = serializers.CharField(source='profesor.usuario.first_name', read_only=True)
+
     class Meta:
         model = Horario
-        fields = '__all__'
+        fields = ['id', 'dia', 'hora_inicio', 'hora_fin', 'aula', 'materia', 'profesor']
 
 class HorarioAlumnoSerializer(serializers.ModelSerializer):
     materia = serializers.CharField(source='gestiongradomateria.materia.nombre')
