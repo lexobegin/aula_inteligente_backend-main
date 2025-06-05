@@ -78,7 +78,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'aula_inteligente_backend.wsgi.application'
 
 
-# Database
+# Database #########
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 import os
