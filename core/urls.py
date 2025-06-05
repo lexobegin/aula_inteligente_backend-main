@@ -53,6 +53,9 @@ urlpatterns = [
     path('register/', RegistroUsuarioView.as_view(), name='registro_usuario'),
     path('auth/me/', usuario_actual, name='usuario-actual'),
 
+    path('dashboard/', dashboard_data),
+    path('dashboard/alumno/', DashboardAlumnoView.as_view(), name='dashboard-alumno'),
+
     #Horario de Alumno
     path('mi-horario/', HorarioAlumnoView.as_view(), name='mi-horario'),
 

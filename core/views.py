@@ -38,8 +38,37 @@ def usuario_actual(request):
     serializer = UsuarioSerializer(usuario)
     return Response(serializer.data)
 
+@api_view(['GET'])
+def dashboard_data(request):
+    alumnos = Alumno.objects.all()
+    serializer = AlumnoSerializer(alumnos, many=True)
+
+    total_alumnos = alumnos.count()
+    promedio_notas = alumnos.aggregate(promedio=Avg('notas__0'))['promedio']  # ejemplo para 1era nota
+
+    rendimiento = [
+        {"nombre": a.nombre, "real": a.real, "predicho": a.predicho}
+        for a in alumnos
+    ]
+
+    return Response({
+        "totalAlumnos": total_alumnos,
+        "promedioNotas": round(promedio_notas or 0, 2),
+        "rendimiento": rendimiento,
+        "alumnos": serializer.data
+    })
+
 class CustomPagination(PageNumberPagination):
     page_size = 7
+
+class DashboardAlumnoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        usuario = request.user
+        inscripciones = Inscripcion.objects.filter(alumno__usuario=usuario)
+        serializer = DashboardAlumnoSerializer(inscripciones, many=True)
+        return Response(serializer.data)
 
 # Registro
 class RegistroUsuarioView(generics.CreateAPIView):
